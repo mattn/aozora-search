@@ -31,11 +31,14 @@ type Entry struct {
 	ZipURL   string
 }
 
-func findZipURL(siteURL string) string {
+func findAuthorAndZIP(siteURL string) (string, string) {
+	log.Println("query", siteURL)
 	doc, err := goquery.NewDocument(siteURL)
 	if err != nil {
-		log.Fatal(err)
+		return "", ""
 	}
+
+	author := doc.Find("table[summary=作家データ]:nth-child(1) tr:nth-child(2) td:nth-child(2)").Text()
 
 	zipURL := ""
 	doc.Find("table.download a").Each(func(n int, elem *goquery.Selection) {
@@ -46,21 +49,22 @@ func findZipURL(siteURL string) string {
 	})
 
 	if zipURL == "" {
-		return ""
+		return author, ""
 	}
 	if strings.HasPrefix(zipURL, "http://") || strings.HasPrefix(zipURL, "https://") {
-		return zipURL
+		return author, zipURL
 	}
 
 	u, err := url.Parse(siteURL)
 	if err != nil {
-		return ""
+		return author, ""
 	}
 	u.Path = path.Join(path.Dir(u.Path), zipURL)
-	return u.String()
+	return author, u.String()
 }
 
 func findEntries(siteURL string) ([]Entry, error) {
+	log.Println("query", siteURL)
 	doc, err := goquery.NewDocument(siteURL)
 	if err != nil {
 		return nil, err
@@ -68,19 +72,15 @@ func findEntries(siteURL string) ([]Entry, error) {
 
 	pat := regexp.MustCompile(`.*/cards/([0-9]+)/card([0-9]+).html$`)
 
-	author := doc.Find("table[summary=作家データ] tr:nth-child(1) td:nth-child(2)").Text()
 	entries := []Entry{}
 	doc.Find("ol li a").Each(func(n int, elem *goquery.Selection) {
-		if len(entries) > 1 {
-			return
-		}
 		token := pat.FindStringSubmatch(elem.AttrOr("href", ""))
 		if len(token) != 3 {
 			return
 		}
 		title := elem.Text()
 		pageURL := fmt.Sprintf("https://www.aozora.gr.jp/cards/%s/card%s.html", token[1], token[2])
-		zipURL := findZipURL(pageURL) // ZIP ファイルの URL を得る
+		author, zipURL := findAuthorAndZIP(pageURL) // ZIP ファイルの URL を得る
 		if zipURL != "" {
 			entries = append(entries, Entry{
 				AuthorID: token[1],
@@ -97,6 +97,7 @@ func findEntries(siteURL string) ([]Entry, error) {
 }
 
 func extractText(zipURL string) (string, error) {
+	log.Println("query", zipURL)
 	resp, err := http.Get(zipURL)
 	if err != nil {
 		return "", err
@@ -132,12 +133,12 @@ func extractText(zipURL string) (string, error) {
 func setupDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS authors(author_id text, author text, primary key (author_id))`,
-		`CREATE TABLE IF NOT EXISTS contents(author_id text, title_id text, title text, content text, primary key (author_id, title_id))`,
+		`CREATE TABLE IF NOT EXISTS authors(author_id TEXT, author TEXT, PRIMARY KEY (author_id))`,
+		`CREATE TABLE IF NOT EXISTS contents(author_id TEXT, title_id TEXT, title TEXT, content TEXT, PRIMARY KEY (author_id, title_id))`,
 		`CREATE VIRTUAL TABLE IF NOT EXISTS contents_fts USING fts4(words)`,
 	}
 	for _, query := range queries {
@@ -171,7 +172,7 @@ func addEntry(db *sql.DB, entry *Entry, content string) error {
 	if err != nil {
 		return err
 	}
-	docId, err := res.LastInsertId()
+	docID, err := res.LastInsertId()
 	if err != nil {
 		return err
 	}
@@ -185,7 +186,7 @@ func addEntry(db *sql.DB, entry *Entry, content string) error {
 	_, err = db.Exec(`
         INSERT INTO contents_fts(docid, words) values(?, ?)
     `,
-		docId,
+		docID,
 		strings.Join(seg, " "),
 	)
 	if err != nil {
@@ -207,6 +208,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("found %d entries", len(entries))
 	for _, entry := range entries {
 		log.Printf("adding %+v\n", entry)
 		content, err := extractText(entry.ZipURL)

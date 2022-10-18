@@ -38,7 +38,7 @@ func findAuthorAndZIP(siteURL string) (string, string) {
 		return "", ""
 	}
 
-	author := doc.Find("table[summary=作家データ]:nth-child(1) tr:nth-child(2) td:nth-child(2)").Text()
+	author := doc.Find("table[summary=作家データ] tr:nth-child(2) td:nth-child(2)").First().Text()
 
 	zipURL := ""
 	doc.Find("table.download a").Each(func(n int, elem *goquery.Selection) {
@@ -184,7 +184,7 @@ func addEntry(db *sql.DB, entry *Entry, content string) error {
 
 	seg := t.Wakati(content)
 	_, err = db.Exec(`
-        INSERT INTO contents_fts(docid, words) values(?, ?)
+        REPLACE INTO contents_fts(docid, words) values(?, ?)
     `,
 		docID,
 		strings.Join(seg, " "),

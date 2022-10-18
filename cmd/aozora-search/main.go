@@ -99,8 +99,8 @@ func queryContent(db *sql.DB, query string) error {
             c.title_id,
             c.title
         FROM
-            authors a
-        INNER JOIN contents c
+            contents c
+        INNER JOIN author a
             ON a.author_id = c.author_id
         INNER JOIN contents_fts f
             ON c.rowid = f.docid
@@ -123,9 +123,24 @@ func queryContent(db *sql.DB, query string) error {
 	return nil
 }
 
+const usage = `
+Usage of ./aozora-search [sub-command] [...]:
+  -d string
+        database (default "database.sqlite")
+
+Sub-commands:
+    authors
+    titles  [AuthorID]
+    content [AuthorID] [TitleID]
+    query   [Query]
+`
+
 func main() {
 	var dsn string
 	flag.StringVar(&dsn, "d", "database.sqlite", "database")
+	flag.Usage = func() {
+		fmt.Print(usage)
+	}
 	flag.Parse()
 
 	if flag.NArg() == 0 {
@@ -143,10 +158,22 @@ func main() {
 	case "authors":
 		err = showAuthors(db)
 	case "titles":
+		if flag.NArg() != 2 {
+			flag.Usage()
+			os.Exit(2)
+		}
 		err = showTitles(db, flag.Arg(1))
 	case "content":
+		if flag.NArg() != 3 {
+			flag.Usage()
+			os.Exit(2)
+		}
 		err = showContent(db, flag.Arg(1), flag.Arg(2))
 	case "query":
+		if flag.NArg() != 2 {
+			flag.Usage()
+			os.Exit(2)
+		}
 		err = queryContent(db, flag.Arg(1))
 	}
 

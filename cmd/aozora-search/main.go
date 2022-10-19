@@ -100,7 +100,7 @@ func queryContent(db *sql.DB, query string) error {
             c.title
         FROM
             contents c
-        INNER JOIN author a
+        INNER JOIN authors a
             ON a.author_id = c.author_id
         INNER JOIN contents_fts f
             ON c.rowid = f.docid

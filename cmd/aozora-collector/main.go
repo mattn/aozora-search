@@ -13,6 +13,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"golang.org/x/text/encoding/japanese"
 
@@ -223,5 +224,6 @@ func main() {
 			log.Println(err)
 			continue
 		}
+		time.Sleep(time.Second * 3)
 	}
 }

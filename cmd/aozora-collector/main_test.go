@@ -16,7 +16,7 @@ func TestFindEntries(t *testing.T) {
 			w.Write([]byte(`
             <table summary="作家データ">
             <tr><td class="header">作家名：</td><td><font size="+2">テスト 太郎</font></td></tr>
-            <tr><td class="header">作家名読み：</td><td>テスト 太郎</td></tr>
+            <tr><td class="header">作家名読み：</td><td>てすと たろう</td></tr>
             <tr><td class="header">ローマ字表記：</td><td>Test, Taro</td></tr>
             </table>
             <ol>
@@ -30,9 +30,12 @@ func TestFindEntries(t *testing.T) {
 			token := pat.FindStringSubmatch(r.URL.String())
 			w.Write([]byte(fmt.Sprintf(`
             <table summary="作家データ">
-            <tr><td class="header">作家名：</td><td><font size="+2">テスト 太郎</font></td></tr>
-            <tr><td class="header">作家名読み：</td><td>テスト 太郎</td></tr>
+            <tbody>
+            <tr><td class="header">分類：</td><td>著者</td></tr>
+            <tr><td class="header">作家名：</td><td><a href="../../index_pages/person999999.html">テスト 太郎</a></td></tr>
+            <tr><td class="header">作家名読み：</td><td>てすと たろう</td></tr>
             <tr><td class="header">ローマ字表記：</td><td>Test, Taro</td></tr>
+            </tbody>
             </table>
             <table border="1" summary="ダウンロードデータ" class="download">
             <tr>
